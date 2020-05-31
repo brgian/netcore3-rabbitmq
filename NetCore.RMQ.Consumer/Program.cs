@@ -13,13 +13,15 @@ namespace NetCore.RMQ.Consumer
 
         static void Main(string[] args)
         {
-            var rmqClient = new RmqClient(HOSTNAME, QUEUE_NAME);
-
-            rmqClient.MessageReceived += (message) => Console.WriteLine($"Message received: {message}");
-            rmqClient.StartMessageConsumer();
+            var rmqMessageConsumer = new RmqMessageConsumer(HOSTNAME, QUEUE_NAME);
+            
+            rmqMessageConsumer.MessageReceived += (message) => Console.WriteLine($"Message received: {message}");
+            rmqMessageConsumer.StartMessageConsumer();
 
             Console.WriteLine("Press [enter] to exit");
             Console.ReadLine();
+
+            rmqMessageConsumer.StopMessageConsumer();
         }
     }
 }

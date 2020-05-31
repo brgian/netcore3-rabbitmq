@@ -12,12 +12,12 @@ namespace NetCore.RMQ.Producer
 
         static void Main(string[] args)
         {
-            var rmqClient = new RmqClient(HOSTNAME, QUEUE_NAME);
+            var rmqClient = new RmqMessageSender(HOSTNAME, QUEUE_NAME);
 
             var exit = false;
             var c = 1;
 
-            Console.WriteLine("Press S to send another message, press E to exit");
+            Console.WriteLine("Press S to send message, press E to exit");
 
             while (!exit)
             {

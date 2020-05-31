@@ -1,11 +1,13 @@
 ﻿using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace NetCore.RMQ.Common
 {
-    public class RmqClient : IDisposable
+    public class RmqMessageConsumer : IDisposable
     {
         public string Hostname { get; }
         public string Queue { get; }
@@ -16,28 +18,23 @@ namespace NetCore.RMQ.Common
         private IConnection consumerConnection;
         private IModel consumerChannel;
 
-        public RmqClient(string hostname, string queue)
+        public bool IsConsuming => consumerConnection.IsOpen && 
+            consumerChannel.IsOpen && 
+            MessageReceived != null;
+
+        public RmqMessageConsumer(string hostname, string queue, MessageReceivedEventHandler callback)
         {
             Hostname = hostname;
             Queue = queue;
+            MessageReceived = callback;
+            
+            StartMessageConsumer();
         }
 
-        public void Send(string message)
+        public RmqMessageConsumer(string hostname, string queue)
         {
-            var factory = new ConnectionFactory() { HostName = Hostname };
-
-            using (var connection = factory.CreateConnection())
-            using (var channel = connection.CreateModel())
-            {
-                DeclareQueue(consumerChannel);
-
-                var body = Encoding.UTF8.GetBytes(message);
-
-                channel.BasicPublish(exchange: "",
-                                     routingKey: Queue,
-                                     basicProperties: null,
-                                     body: body);
-            }
+            Hostname = hostname;
+            Queue = queue;
         }
 
         public void StartMessageConsumer()
@@ -49,18 +46,23 @@ namespace NetCore.RMQ.Common
 
             DeclareQueue(consumerChannel);
 
-            var consumer = new EventingBasicConsumer(consumerChannel);
-            consumer.Received += (model, ea) =>
+            if (MessageReceived != null)
             {
-                var body = ea.Body;
-                var message = Encoding.UTF8.GetString(body.ToArray());
+                var consumer = new EventingBasicConsumer(consumerChannel);
+                consumer.Received += (model, ea) =>
+                {
+                    var body = ea.Body;
+                    var message = Encoding.UTF8.GetString(body.ToArray());
 
-                this.MessageReceived.Invoke(message);
-            };
+                    this.MessageReceived.Invoke(message);
+                };
 
-            consumerChannel.BasicConsume(queue: Queue,
-                                     autoAck: true,
-                                     consumer: consumer);
+                consumerChannel.BasicConsume(queue: Queue,
+                                         autoAck: true,
+                                         consumer: consumer);
+            }
+            else
+                throw new NoMessageReceivedHandlerException();
         }
 
         private void DeclareQueue(IModel channel)
