@@ -5,7 +5,7 @@ using System.Text;
 
 namespace NetCore.RMQ.Common
 {
-    public sealed class RmqClient : IDisposable
+    public class RmqClient : IDisposable
     {
         public string Hostname { get; }
         public string Queue { get; }
@@ -29,12 +29,7 @@ namespace NetCore.RMQ.Common
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
-
-                channel.QueueDeclare(queue: Queue,
-                                     durable: false,
-                                     exclusive: false,
-                                     autoDelete: false,
-                                     arguments: null);
+                DeclareQueue(consumerChannel);
 
                 var body = Encoding.UTF8.GetBytes(message);
 
@@ -45,18 +40,14 @@ namespace NetCore.RMQ.Common
             }
         }
 
-        public void StartMessageConsumer(MessageReceivedEventHandler callback)
+        public void StartMessageConsumer()
         {
             var factory = new ConnectionFactory() { HostName = Hostname };
 
             consumerConnection = factory.CreateConnection();
             consumerChannel = consumerConnection.CreateModel();
 
-            consumerChannel.QueueDeclare(queue: Queue,
-                                     durable: false,
-                                     exclusive: false,
-                                     autoDelete: false,
-                                     arguments: null);
+            DeclareQueue(consumerChannel);
 
             var consumer = new EventingBasicConsumer(consumerChannel);
             consumer.Received += (model, ea) =>
@@ -72,7 +63,16 @@ namespace NetCore.RMQ.Common
                                      consumer: consumer);
         }
 
-        public void StopMessageConsumer(MessageReceivedEventHandler callback)
+        private void DeclareQueue(IModel channel)
+        {
+            channel.QueueDeclare(queue: Queue,
+                                   durable: false,
+                                   exclusive: false,
+                                   autoDelete: false,
+                                   arguments: null);
+        }
+
+        public void StopMessageConsumer()
         {
             consumerChannel.Close();
             consumerConnection.Close();

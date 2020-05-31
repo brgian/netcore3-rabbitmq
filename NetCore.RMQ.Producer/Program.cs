@@ -1,4 +1,5 @@
-﻿using RabbitMQ.Client;
+﻿using NetCore.RMQ.Common;
+using RabbitMQ.Client;
 using System;
 using System.Text;
 
@@ -11,30 +12,25 @@ namespace NetCore.RMQ.Producer
 
         static void Main(string[] args)
         {
-            var factory = new ConnectionFactory() { HostName = HOSTNAME };
-            
-            using (var connection = factory.CreateConnection())
-            using (var channel = connection.CreateModel())
+            var rmqClient = new RmqClient(HOSTNAME, QUEUE_NAME);
+
+            var exit = false;
+            var c = 1;
+
+            Console.WriteLine("Press S to send another message, press E to exit");
+
+            while (!exit)
             {
-                //Will create queue if not exists
-                channel.QueueDeclare(queue: QUEUE_NAME,
-                                     durable: false,
-                                     exclusive: false,
-                                     autoDelete: false,
-                                     arguments: null);
+                var keyInfo = Console.ReadKey();
 
-                string message = "This is a test message";
-                var body = Encoding.UTF8.GetBytes(message);
-
-                channel.BasicPublish(exchange: "",
-                                     routingKey: QUEUE_NAME,
-                                     basicProperties: null,
-                                     body: body);
-                Console.WriteLine(" [x] Sent {0}", message);
+                if (keyInfo.KeyChar == 's')
+                {
+                    rmqClient.Send($"Test message {c}");
+                    c++;
+                }
+                else if (keyInfo.KeyChar == 'e')
+                    exit = true;
             }
-
-            Console.WriteLine(" Press [enter] to exit.");
-            Console.ReadLine();
         }
     }
 }
